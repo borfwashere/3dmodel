@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borf 3D File System</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    
+    <style>
+        :root { 
+            --win-gray: #c0c0c0; 
+            --win-border-light: #ffffff; 
+            --win-border-dark: #808080; 
+            --win-blue-dark: #000080; 
+            --win-blue-light: #1084d0;
+            /* Tamaño de la ventana flotante del visor */
+            --win-width: 650px; 
+            --win-height: 550px;
+        }
+        
+        /* BLOQUEO TOTAL DE SELECCIÓN Y CLIC DERECHO */
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            user-select: none; -webkit-user-select: none;
+            -webkit-user-drag: none; outline: none; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        body, html { 
+            width: 100%; height: 100%; 
+            font-family: 'Tahoma', sans-serif; 
+            background-color: #fff; /* Fondo blanco puro como una carpeta */
+            overflow: hidden; 
+            display: flex; flex-direction: column; 
+            position: relative;
+        }
+
+        /* --- EXPLORADOR DE ARCHIVOS (GRID DE ICONOS) --- */
+        #explorer { 
+            flex: 1; 
+            padding: 20px; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); 
+            gap: 15px; 
+            overflow-y: auto; 
+            background: #fff;
+            z-index: 1; /* Fondo blanco */
+        }
+        
+        .file-item { 
+            width: 120px; text-align: center; cursor: pointer; 
+            padding: 5px; border: 1px solid transparent; 
+            display: flex; flex-direction: column; align-items: center;
+        }
+        
+        /* Hover sutil, sin bloques azules feos */
+        .file-item:hover .icon-plate { border-color: var(--win-blue-dark); }
+        .file-item:hover .file-name { color: var(--win-blue-dark); text-decoration: underline; }
+        
+        .icon-plate { 
+            width: 100px; height: 100px; 
+            background: #fdfdfd; 
+            border: 2px outset var(--win-border-light); /* Borde Win98 */
+            display: flex; align-items: center; justify-content: center; 
+            overflow: hidden; pointer-events: none;
+        }
+        
+        /* Icono genérico 3D Win98 (Texto o imagen, he puesto texto) */
+        .icon-plate::after {
+            content: "3D";
+            font-size: 40px;
+            font-weight: bold;
+            color: #808080;
+            opacity: 0.5;
+        }
+        
+        .file-name { 
+            font-size: 10px; margin-top: 5px; width: 100%; 
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; 
+            color: #000;
+        }
+
+        /* --- VENTANA DEL VISOR FLOTANTE --- */
+        #viewerWin { 
+            position: fixed; 
+            /* Centrado absoluto sobre la carpeta */
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%); 
+            
+            width: var(--win-width);
+            height: var(--win-height);
+            max-width: 95vw;
+            max-height: 90vh;
+            
+            background: var(--win-gray);
+            border: 3px outset var(--win-border-light);
+            display: none; 
+            flex-direction: column; 
+            z-index: 1000; /* Encima de la carpeta */
+            box-shadow: 10px 10px 30px rgba(0,0,0,0.5); /* Profundidad */
+        }
+
+        /* BARRA DE TÍTULO CON DEGRADADO (ESTILO MATRIX) */
+        .win-title { 
+            background: linear-gradient(90deg, var(--win-blue-dark) 0%, var(--win-blue-light) 100%);
+            color: white; 
+            padding: 3px 4px 3px 8px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            font-weight: bold; font-size: 12px; letter-spacing: 0.5px;
+        }
+        
+        .close-btn { 
+            width: 16px; height: 14px; 
+            background: var(--win-gray); border: 2px outset #fff; 
+            color: black; font-size: 9px; 
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; font-weight: bold;
+        }
+        .close-btn:active { border: 2px inset #fff; padding: 1px 0 0 1px; }
+
+        /* CUERPO DEL VISOR (DONDE VA EL MODELO) */
+        .win-body { 
+            flex: 1; 
+            background: #fff; /* Fondo blanco para el renderizado 3D */
+            margin: 2px;
+            border: 2px inset var(--win-border-dark); /* Efecto hundido */
+            overflow: hidden;
+            display: flex;
+        }
+        
+        /* EL COMPONENTE 3D (Ocupa todo el cuerpo) */
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            --poster-color: #ffffff;
+        }
+
+        .win-footer { 
+            padding: 4px 8px; 
+            background: var(--win-gray); 
+            border-top: 1px solid var(--win-border-dark);
+            font-size: 10px;
+            color: #000;
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <div id="explorer">
+        <div style="color: #808080; padding: 20px; font-size: 11px;">Buscando modelos en GitHub...</div>
+    </div>
+
+    <div id="viewerWin">
+        <div class="win-title">
+            <span id="winTitleText">Borf 3D Viewer</span>
+            <div class="close-btn" onclick="closeViewer()">X</div>
+        </div>
+        <div class="win-body">
+            <model-viewer id="mv"
+                src="" 
+                alt="Borf 3D Model"
+                auto-rotate 
+                camera-controls 
+                shadow-intensity="1"
+                interaction-prompt="none">
+            </model-viewer>
+        </div>
+        <div id="status" class="win-footer">Cargando renderizado...</div>
+    </div>
+
+    <script>
+        // URLs necesarias para tu repositorio específico
+        const API_URL = "https://api.github.com/repos/borfwashere/3dmodel/contents/";
+        const RAW_BASE = "https://raw.githubusercontent.com/borfwashere/3dmodel/main/";
+
+        // 1. Cargar la lista de modelos desde GitHub
+        async function loadModels() {
+            try {
+                const res = await fetch(API_URL);
+                const files = await res.json();
+                
+                // Filtramos solo los archivos que terminan en .glb
+                const models = files.filter(f => f.name.endsWith('.glb'));
+                
+                const exp = document.getElementById('explorer');
+                exp.innerHTML = "";
+                
+                if (models.length === 0) {
+                    exp.innerHTML = "<div style='padding:20px; color:#000;'>No se encontraron modelos .glb en el repositorio.</div>";
+                    return;
+                }
+                
+                // 2. Dibujar los iconos en el explorador
+                models.forEach(m => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.onclick = () => openViewer(m.name);
+                    item.innerHTML = `
+                        <div class="icon-plate"></div>
+                        <span class="file-name">${m.name}</span>
+                    `;
+                    exp.appendChild(item);
+                });
+                
+            } catch (e) {
+                document.getElementById('explorer').innerHTML = "Error al conectar con la API de GitHub.";
+            }
+        }
+
+        // 3. Lógica para abrir el visor flotante y cargar el modelo
+        function openViewer(modelName) {
+            const win = document.getElementById('viewerWin');
+            const mv = document.getElementById('mv');
+            const title = document.getElementById('winTitleText');
+            const status = document.getElementById('status');
+            
+            // Seteamos la URL "Raw" para que model-viewer pueda cargar el archivo puro
+            mv.src = RAW_BASE + modelName;
+            
+            // Actualizamos UI
+            title.innerText = "Viewing: " + modelName;
+            status.innerText = "Archivo: " + modelName + " | Renderizado en tiempo real (clic izquierdo para rotar)";
+            
+            // Mostramos la ventana flotante
+            win.style.display = "flex";
+        }
+
+        // 4. Cerrar el visor
+        function closeViewer() {
+            document.getElementById('viewerWin').style.display = "none";
+            // Limpiamos el src para liberar memoria
+            document.getElementById('mv').src = "";
+        }
+
+        // Bloqueo estricto de click derecho en toda la página
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Teclado (Esc para cerrar)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") closeViewer();
+        });
+
+        loadModels();
+    </script>
+</body>
+</html>
