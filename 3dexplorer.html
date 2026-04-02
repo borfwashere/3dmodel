@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Borf 3D - 3D Explorer (Hybrid Fixed)</title>
+    <title>Borf 3D - 3D Explorer (Anti-Conflict)</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
         :root { 
@@ -17,23 +17,31 @@
             --vw-purple: #b967ff;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-touch-callout: none; outline: none; }
+        /* RESET CRÍTICO PARA EVITAR FUGAS DE SCROLL */
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            user-select: none; -webkit-touch-callout: none; outline: none; 
+        }
         
-        body, html { 
+        html, body { 
             width: 100%; height: 100%; 
             font-family: 'Tahoma', sans-serif; 
             background-color: #008080 !important; 
             background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIElEQVQIW2NkYGD4D8SogAnMZGhgYGD4D8SogAnMZGhgAH0EAgB/6B9OAAAAAElFTkSuQmCC");
-            overflow: hidden; display: flex; align-items: center; justify-content: center; 
+            overflow: hidden; 
+            position: fixed; /* Clava la app al viewport */
+            display: flex; align-items: center; justify-content: center; 
+            overscroll-behavior: none; /* Bloquea el "jale" hacia los padres */
         }
 
-        /* --- DESKTOP LAYOUT --- */
         #appWin { 
             width: 950px; height: 700px;
             background: var(--win-gray);
             border: 3px outset var(--win-border-light);
             display: flex; flex-direction: column; 
             box-shadow: 10px 10px 40px rgba(0,0,0,0.5);
+            overscroll-behavior: none;
+            touch-action: none; /* Los toques mueren aquí */
         }
 
         .win-title { 
@@ -52,6 +60,7 @@
             border-right: 2px solid var(--win-border-dark);
             display: flex; flex-direction: column; padding: 5px;
             overflow-y: auto;
+            touch-action: pan-y; /* Permite scroll vertical solo en la lista */
         }
         
         .sidebar-header { font-weight:bold; font-size:11px; padding: 5px; border-bottom:1px solid #808080; margin-bottom: 5px;}
@@ -69,6 +78,7 @@
             animation: vapor-bg 2s infinite alternate ease-in-out;
             border-left: 2px solid var(--win-border-light);
             overflow: hidden;
+            touch-action: none; /* Bloquea el scroll al tocar el visor */
         }
 
         @keyframes vapor-bg {
@@ -81,6 +91,7 @@
             width: 100%; height: 100%;
             background: transparent;
             --poster-color: transparent;
+            touch-action: none; /* Obliga a que el dedo solo rote el modelo */
         }
 
         #glow-overlay {
@@ -90,15 +101,15 @@
             mix-blend-mode: overlay;
         }
 
-        .win-footer { padding: 4px 10px; background: var(--win-gray); border-top: 1px solid var(--win-border-dark); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .win-footer { padding: 4px 10px; background: var(--win-gray); border-top: 1px solid var(--win-border-dark); font-size: 10px; }
 
-        /* --- MOBILE LAYOUT --- */
+        /* --- MOBILE ADAPTATION --- */
         @media (max-width: 950px), (orientation: portrait) {
             body, html { padding: 0; align-items: flex-start; }
             #appWin { width: 100vw; height: 100vh; max-width: none; max-height: none; border: none; box-shadow: none; }
             .win-body { flex-direction: column-reverse; margin: 0; }
-            #sidebar { width: 100%; height: 40%; border-right: none; border-top: 2px solid var(--win-border-dark); }
-            #main-viewer { height: 60%; border-left: none; }
+            #sidebar { width: 100%; height: 35%; border-right: none; border-top: 2px solid var(--win-border-dark); }
+            #main-viewer { height: 65%; border-left: none; }
             .model-item { padding: 15px 10px; font-size: 12px; }
             .win-title { height: 26px; font-size: 13px; }
         }
@@ -124,16 +135,15 @@
                     auto-rotate 
                     camera-controls
                     disable-pan
-                    touch-action="pan-y"
-                    rotation-speed="120deg" 
+                    interaction-prompt="none"
                     shadow-intensity="2" 
                     exposure="1.8"
-                    interaction-prompt="none">
+                    style="touch-action: none;">
                 </model-viewer>
             </div>
         </div>
         
-        <div class="win-footer" id="status">Borf 3D Explorer Ready | Pan: Disabled</div>
+        <div class="win-footer" id="status">Ready | Interaction: Fixed</div>
     </div>
 
     <script>
